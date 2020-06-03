@@ -19,7 +19,7 @@ import functools
 from t5.data import postprocessors
 from t5.data import preprocessors
 from t5.data.utils import Feature
-from t5.data.utils import get_default_vocabulary
+from t5.data.utils import configurable_vocabulary
 from t5.data.utils import set_global_cache_dirs
 from t5.data.utils import TaskRegistry
 from t5.data.utils import TfdsTask
@@ -29,8 +29,12 @@ import tensorflow_datasets as tfds
 
 
 DEFAULT_OUTPUT_FEATURES = {
-    "inputs": Feature(vocabulary=get_default_vocabulary(), add_eos=True),
-    "targets": Feature(vocabulary=get_default_vocabulary(), add_eos=True)
+    "inputs": Feature(vocabulary=configurable_vocabulary, add_eos=True),
+    "targets": Feature(vocabulary=configurable_vocabulary, add_eos=True)
+}
+
+DEFAULT_OUTPUT_FEATURES_LM = {
+    "targets": Feature(vocabulary=configurable_vocabulary, add_eos=True)
 }
 
 # ==================================== C4 ======================================

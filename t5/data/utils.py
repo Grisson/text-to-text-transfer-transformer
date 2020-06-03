@@ -53,6 +53,33 @@ def get_default_vocabulary():
       DEFAULT_SPM_PATH, DEFAULT_EXTRA_IDS)
 
 
+@gin.configurable
+def configurable_vocabulary(spm_path=DEFAULT_SPM_PATH,
+                            extra_ids=DEFAULT_EXTRA_IDS):
+  """Vocabulary that can be gin-configured.
+
+  Make sure not to call this before gin initialization, or it will have the
+  default values.
+
+  Defaults to the same thing as get_default_vocabulary()
+
+  Configuring the vocabulary is not compatible with task caching.
+
+  TODO(noam): we should find some way to bug-check that function is not
+  called before gin initialization.  Maybe put the default values into
+  a gin file, or something like that.
+
+  Args:
+    spm_path: a string
+    extra_ids: an integer
+
+  Returns:
+    a SentencePieceVocabulary
+  """
+  return sentencepiece_vocabulary.SentencePieceVocabulary(
+      spm_path, extra_ids)
+
+
 def set_tfds_data_dir_override(tfds_data_dir):
   global _TFDS_DATA_DIR_OVERRIDE
   _TFDS_DATA_DIR_OVERRIDE = tfds_data_dir
@@ -322,11 +349,18 @@ class Feature(object):
     """Create a Feature instance.
 
     Args:
-      vocabulary: vocabularies.Vocabulary object to use for tokenization.
+      vocabulary: vocabularies.Vocabulary object to use for tokenization,
+        or a callable function returning a vocabulary
       add_eos: bool, whether an EOS token should be added to this Feature.
     """
-    self.vocabulary = vocabulary
+    self._vocabulary = vocabulary
     self.add_eos = add_eos
+
+  @property
+  def vocabulary(self):
+    if callable(self._vocabulary):
+      self._vocabulary = self._vocabulary()
+    return self._vocabulary
 
 
 def print_dataset(dataset):
@@ -361,7 +395,8 @@ class Task(DatasetProviderBase):
                output_features=None,
                num_input_examples=None,
                supports_caching=False,
-               sentencepiece_model_path=None):
+               sentencepiece_model_path=None,
+               shuffle_buffer_size=_SHUFFLE_BUFFER_SIZE):
     """Task constructor.
 
     Attributes of output features, including the vocabulary used for
@@ -406,6 +441,7 @@ class Task(DatasetProviderBase):
       supports_caching: bool, whether or not this task supports offline caching.
       sentencepiece_model_path: DEPRECATED use `output_features` to specify a
         non-default vocabulary.
+      shuffle_buffer_size: an optional integer
     """
     if not _VALID_TASK_NAME_REGEX.match(name):
       raise ValueError(
@@ -430,6 +466,7 @@ class Task(DatasetProviderBase):
 
     self._cache_dir = None
     self._stats = {}
+    self._shuffle_buffer_size = shuffle_buffer_size
 
     if sentencepiece_model_path == DEFAULT_SPM_PATH:
       logging.warn(
@@ -664,7 +701,7 @@ class Task(DatasetProviderBase):
       split=tfds.Split.TRAIN,
       use_cached=False,
       shuffle=True,
-      shuffle_buffer_size=_SHUFFLE_BUFFER_SIZE,
+      shuffle_buffer_size=None,
   ):
     """Returns a tf.data.Dataset from cache or generated on the fly.
 
@@ -706,7 +743,7 @@ class Task(DatasetProviderBase):
     if shuffle:
       # Shuffle before mixing since preprocessor can output multiple
       # (correlated) examples per input.
-      ds = ds.shuffle(shuffle_buffer_size)
+      ds = ds.shuffle(shuffle_buffer_size or self._shuffle_buffer_size)
 
     return ds
 

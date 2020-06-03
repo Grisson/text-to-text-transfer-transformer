@@ -63,14 +63,14 @@ class SentencePieceVocabulary(vocabularies.Vocabulary):
     self._tokenizer = sentencepiece_processor.SentencePieceProcessor()
     self._tokenizer.LoadFromSerializedProto(self._sp_model)
     if self._tokenizer.pad_id() != 0:
-      raise ValueError(
-          f"Vocabulary PAD ID must be 0, got {self._tokenizer.pad_id()}")
+      tf.logging.warning(
+          f"Vocabulary PAD ID expected 0, got {self._tokenizer.pad_id()}")
     if self._tokenizer.eos_id() != 1:
-      raise ValueError(
-          f"Vocabulary EOS ID must be 1, got {self._tokenizer.eos_id()}")
+      tf.logging.warning(
+          f"Vocabulary EOS ID expected 1, got {self._tokenizer.eos_id()}")
     if self._tokenizer.unk_id() != 2:
-      raise ValueError(
-          f"Vocabulary UNK ID must be 2, got {self._tokenizer.unk_id()}")
+      tf.logging.warning(
+          f"Vocabulary UNK ID expected 2, got {self._tokenizer.unk_id()}")
 
   @property
   def sp_model(self):
